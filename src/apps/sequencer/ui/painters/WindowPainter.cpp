@@ -153,8 +153,8 @@ void WindowPainter::drawActiveState(Canvas &canvas, int track, int playPattern, 
         // draw active pattern (shifted right to accommodate two-digit track numbers)
         drawInvertedText(painter, 68, 8, FixedStringBuilder<8>("P%d", playPattern + 1), songActive);
 
-        // draw edit pattern (shifted right to maintain spacing)
-        drawInvertedText(painter, 87, 8, FixedStringBuilder<8>("E%d", editPattern + 1), playPattern == editPattern);
+        // draw edit pattern (shifted left slightly for better spacing with mode name)
+        drawInvertedText(painter, 84, 8, FixedStringBuilder<8>("E%d", editPattern + 1), playPattern == editPattern);
     }
 }
 
@@ -165,7 +165,9 @@ void WindowPainter::drawActiveMode(Canvas &canvas, const char *mode) {
 
     canvas.setBlendMode(BlendMode::Set);
     canvas.setColor(Color::Bright);
-    int x = PageWidth - painter.textWidth(mode) - 2;
+    // Position mode name from right edge with clear spacing
+    int textWidth = painter.textWidth(mode);
+    int x = PageWidth - textWidth - 8;  // 8px padding from right edge
     painter.drawTextBaseline(x, 8, mode);
 }
 

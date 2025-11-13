@@ -2,10 +2,12 @@
 
 #include "ui/LedPainter.h"
 #include "ui/painters/WindowPainter.h"
+#include "ui/painters/ScreenPainter.h"
 
 #include "core/utils/StringBuilder.h"
 #include "core/midi/MidiMessage.h"
 #include "model/Types.h"
+#include "engine/NoteTrackEngine.h"
 
 #include "os/os.h"
 
@@ -40,36 +42,90 @@ void KeyboardPage::exit() {
 }
 
 // Map hardware buttons to notes
-// S9-S16 (step 8-15) = white keys (8 visible keys)
-// S2,S3,S5,S6,S7 (steps 1,2,4,5,6) = black keys (5 black keys in piano pattern 2-3)
+// S9-S16 (step 8-15) = white keys only (natural notes: C, D, E, F, G, A, B, C)
+// S1-S8 (step 0-7) = dynamically map to black keys (sharps/flats) within active white key range
 int KeyboardPage::noteForKey(int step) const {
-    int baseNote = _octave * 12 + _rootOffset;
-    
-    // White keys mapping (S9-S16 map to 8 semitones starting at rootOffset)
+    int baseNote = _octave * 12;
+
+    // Steps 8-15 (S9-S16): Map to 8 consecutive WHITE keys
+    // rootOffset (0-6) determines which white key is first: C=0, D=1, E=2, F=3, G=4, A=5, B=6
+    // White keys chromatic positions: C=0, D=2, E=4, F=5, G=7, A=9, B=11
     if (step >= 8 && step <= 15) {
-        int keyIndex = step - 8;  // 0-7
-        return baseNote + keyIndex;
+        int whiteKeyIndex = (step - 8) + _rootOffset;  // 0-14 (can span up to 2 octaves)
+
+        // Map white key index to chromatic position
+        static const int whiteKeyChromaticPos[7] = {0, 2, 4, 5, 7, 9, 11};  // C D E F G A B
+
+        int octaveOffset = (whiteKeyIndex / 7) * 12;  // Which octave (0 or 12)
+        int keyInOctave = whiteKeyIndex % 7;          // Which white key in octave (0-6)
+
+        return baseNote + whiteKeyChromaticPos[keyInOctave] + octaveOffset;
     }
-    
-    // Black keys - standard piano pattern within active window
-    // Pattern: C# D# _ F# G# A# (positions 1,3,_,6,8,10 in chromatic scale)
-    // Map to buttons: S2(pos 1), S3(pos 3), S5(pos 6), S6(pos 8), S7(pos 10)
-    if (step == 1) return baseNote + 1;   // C#
-    if (step == 2) return baseNote + 3;   // D#
-    if (step == 4) return baseNote + 6;   // F#
-    if (step == 5) return baseNote + 8;   // G#
-    if (step == 6) return baseNote + 10;  // A#
-    
-    return -1;
+
+    // Steps 0-7 (S1-S8): Map to black keys with dynamic piano keyboard spacing
+    // Pattern shifts based on which white keys are active
+    // S1 maps to the gap BEFORE the first white key, S2 to gap after first white key, etc.
+    if (step >= 0 && step <= 7) {
+        // Get the 9 active white key notes (need 9 to check gap after 8th white key)
+        static const int whiteKeyChromaticPos[7] = {0, 2, 4, 5, 7, 9, 11};  // C D E F G A B
+        int whiteKeyNotes[9];
+
+        for (int i = 0; i < 9; ++i) {
+            int whiteKeyIndex = _rootOffset + i;
+            int octaveOffset = (whiteKeyIndex / 7) * 12;
+            int keyInOctave = whiteKeyIndex % 7;
+            whiteKeyNotes[i] = baseNote + whiteKeyChromaticPos[keyInOctave] + octaveOffset;
+        }
+
+        // Map S1-S8 to gaps, offset by one position
+        // S1 = gap before white key 0 (between previous white key and white key 0)
+        // S2 = gap after white key 0 (between white key 0 and 1)
+        // S3 = gap after white key 1 (between white key 1 and 2)
+        // ... etc.
+
+        int lowerWhite, upperWhite;
+
+        if (step == 0) {
+            // S1: Gap before first white key
+            // Find the white key before the first active white key
+            int prevWhiteNote = whiteKeyNotes[0] - 1;  // Start one semitone below
+            while (prevWhiteNote >= 0) {
+                int chromPos = prevWhiteNote % 12;
+                bool isWhite = (chromPos == 0 || chromPos == 2 || chromPos == 4 ||
+                               chromPos == 5 || chromPos == 7 || chromPos == 9 || chromPos == 11);
+                if (isWhite) {
+                    lowerWhite = prevWhiteNote;
+                    upperWhite = whiteKeyNotes[0];
+                    break;
+                }
+                prevWhiteNote--;
+            }
+        } else {
+            // S2-S8: Gaps after white keys 0-6
+            lowerWhite = whiteKeyNotes[step - 1];
+            upperWhite = whiteKeyNotes[step];
+        }
+
+        // Check if there's a black key between these two white keys
+        if (upperWhite - lowerWhite == 2) {
+            // There's exactly one semitone gap = black key exists
+            return lowerWhite + 1;
+        } else if (upperWhite - lowerWhite == 1) {
+            // Adjacent white keys (E-F or B-C) = no black key
+            return -1;
+        }
+    }
+
+    return -1;  // Button doesn't map to anything
 }
 
 void KeyboardPage::playNote(int step) {
     int note = noteForKey(step);
     if (note < 0 || note > 127) return;
 
-    float cv = (note - 60) / 12.f;
-    _engine.midiOutputEngine().sendGate(_selectedTrackIndex, true);
-    _engine.midiOutputEngine().sendCv(_selectedTrackIndex, cv);
+    // Send note through selected track's engine monitoring system (same as MIDI keyboard input)
+    // This allows live playback and recording on the selected track
+    _engine.trackEngine(_selectedTrackIndex).monitorMidi(_engine.tick(), MidiMessage::makeNoteOn(0, note, 100));
 
     _keyStates[step].pressed = true;
     _keyStates[step].note = note;
@@ -79,7 +135,10 @@ void KeyboardPage::playNote(int step) {
 void KeyboardPage::releaseNote(int step) {
     if (!_keyStates[step].pressed || _keyStates[step].note < 0) return;
 
-    _engine.midiOutputEngine().sendGate(_selectedTrackIndex, false);
+    int note = _keyStates[step].note;
+
+    // Send note off through selected track's engine monitoring system
+    _engine.trackEngine(_selectedTrackIndex).monitorMidi(_engine.tick(), MidiMessage::makeNoteOff(0, note));
 
     _keyStates[step].pressed = false;
     _keyStates[step].note = -1;
@@ -92,15 +151,15 @@ void KeyboardPage::draw(Canvas &canvas) {
     str("KEYBOARD");
     WindowPainter::drawHeader(canvas, _model, _engine, str);
 
-    // Function buttons: F1, F2, F3=EXIT, F4=OCT-, F5=OCT+, F6
-    const char *functionNames[] = { nullptr, nullptr, "EXIT", "OCT-", "OCT+", nullptr };
+    // Function buttons: F1=INIT, F2=DUPL, F3=ARP, F4=OCT-, F5=OCT+, F6
+    const char *functionNames[] = { "INIT", "DUPL", "ARP", "OCT-", "OCT+", nullptr };
     WindowPainter::drawFooter(canvas, functionNames, pageKeyState());
 
     // Draw 14 white keys (2 octaves = 7 white keys per octave)
     const int whiteKeyWidth = 12;  // 12px per white key
-    const int whiteKeyHeight = 34;
+    const int whiteKeyHeight = 28;  // Reduced from 34 to make room for step display
     const int blackKeyWidth = 9;   // 9px per black key
-    const int blackKeyHeight = 20;
+    const int blackKeyHeight = 16;  // Reduced proportionally
     const int totalWidth = 14 * whiteKeyWidth;  // 168px total
     const int startX = (256 - totalWidth) / 2;  // Center: 44px margin each side
     const int startY = 15;
@@ -116,74 +175,93 @@ void KeyboardPage::draw(Canvas &canvas) {
     int keyboardEndX = startX + totalWidth;
     int rightMargin = 256 - keyboardEndX;
 
-    // Move track/root/octave to BOTTOM of window (below footer)
-    const int bottomY = 56;  // Just above footer line at y=57
-
-    // Track number at bottom left
-    canvas.setFont(Font::Tiny);
+    // LEFT SIDE: Track number and Root note/octave - centered vertically with keyboard
+    // Track number
+    canvas.setFont(Font::Small);
     FixedStringBuilder<8> trackStr;
     trackStr("T%d", _selectedTrackIndex + 1);
     int trackTextWidth = canvas.textWidth(trackStr);
     int trackX = (leftMargin - trackTextWidth) / 2;
-    canvas.drawText(trackX, bottomY, trackStr);
+    canvas.drawText(trackX, keyboardMidY + 6, trackStr);
 
-    // Root note/octave at bottom (BOLD) - centered in left margin
-    canvas.setFont(Font::Small);  // Use Small (bold) instead of Tiny
+    // Root note/octave - show first active white key
     FixedStringBuilder<8> rootStr;
-    rootStr("%s%d", noteNames[_rootOffset], _octave);
+    const char *whiteKeyNames[] = {"C", "D", "E", "F", "G", "A", "B"};
+    // Calculate the actual MIDI note for the root and convert to display octave (MIDI octave - 1)
+    int rootMidiNote = (_octave * 12) + (whiteKeyNames[_rootOffset][0] == 'C' ? 0 :
+                                          whiteKeyNames[_rootOffset][0] == 'D' ? 2 :
+                                          whiteKeyNames[_rootOffset][0] == 'E' ? 4 :
+                                          whiteKeyNames[_rootOffset][0] == 'F' ? 5 :
+                                          whiteKeyNames[_rootOffset][0] == 'G' ? 7 :
+                                          whiteKeyNames[_rootOffset][0] == 'A' ? 9 : 11);
+    int displayOctave = (rootMidiNote / 12) - 1;
+    rootStr("%s%d", whiteKeyNames[_rootOffset], displayOctave);
     int rootTextWidth = canvas.textWidth(rootStr);
     int rootX = (leftMargin - rootTextWidth) / 2;
-    canvas.drawText(rootX, bottomY + 8, rootStr);  // 8px below track number
+    canvas.drawText(rootX, keyboardMidY - 6, rootStr);  // Above track number
 
-    // Last note played - persistent display at bottom right
-    if (_lastNotePlayed >= 0) {
+    // RIGHT SIDE: Currently pressed note or last played note - centered vertically with keyboard
+    // Priority: Show currently pressed note, otherwise show last played note
+    int displayNote = -1;
+
+    // Check if any key is currently pressed
+    for (int i = 0; i < 16; ++i) {
+        if (_keyStates[i].pressed && _keyStates[i].note >= 0) {
+            displayNote = _keyStates[i].note;
+            break;
+        }
+    }
+
+    // If no key pressed, show last played note
+    if (displayNote < 0 && _lastNotePlayed >= 0) {
+        displayNote = _lastNotePlayed;
+    }
+
+    // Display the note
+    if (displayNote >= 0) {
         canvas.setFont(Font::Small);
-        int noteNum = _lastNotePlayed % 12;
-        int noteOct = (_lastNotePlayed / 12) - 1;
-        FixedStringBuilder<8> lastNoteStr;
-        lastNoteStr("%s%d", noteNames[noteNum], noteOct);
-        int lastNoteWidth = canvas.textWidth(lastNoteStr);
-        int lastNoteX = keyboardEndX + (rightMargin - lastNoteWidth) / 2;
-        canvas.drawText(lastNoteX, bottomY + 8, lastNoteStr);  // Align with root note
-    }
-
-    // Draw left pagination arrow - closer to keys, centered vertically with keyboard
-    if (_rootOffset > 0) {
-        canvas.setColor(Color::Bright);
-        int arrowX = startX - 14;  // Closer to keys (was in center of margin)
-        int arrowY = keyboardMidY;  // Vertically centered with keyboard
-        canvas.fillRect(arrowX, arrowY, 2, 2);
-        canvas.fillRect(arrowX + 2, arrowY - 1, 2, 4);
-        canvas.fillRect(arrowX + 4, arrowY - 2, 2, 6);
-    }
-
-    // Draw right pagination arrow - closer to keys, centered vertically with keyboard
-    if (_rootOffset < 11) {
-        canvas.setColor(Color::Bright);
-        int arrowX = keyboardEndX + 6;  // Closer to keys (was in center of margin)
-        int arrowY = keyboardMidY;  // Vertically centered with keyboard
-        canvas.fillRect(arrowX + 4, arrowY - 2, 2, 6);
-        canvas.fillRect(arrowX + 6, arrowY - 1, 2, 4);
-        canvas.fillRect(arrowX + 8, arrowY, 2, 2);
+        int noteNum = displayNote % 12;
+        int noteOct = (displayNote / 12) - 1;
+        FixedStringBuilder<8> noteDisplayStr;
+        noteDisplayStr("%s%d", noteNames[noteNum], noteOct);
+        int noteDisplayWidth = canvas.textWidth(noteDisplayStr);
+        int noteDisplayX = keyboardEndX + (rightMargin - noteDisplayWidth) / 2;
+        canvas.drawText(noteDisplayX, keyboardMidY, noteDisplayStr);  // Centered vertically
     }
 
     // Draw all 14 white keys (2 octaves)
+    // Calculate which white keys correspond to the 8 active buttons (S9-S16)
+    int baseNote = _octave * 12;
+
     canvas.setBlendMode(BlendMode::Set);
     for (int i = 0; i < 14; ++i) {
         int x = startX + i * whiteKeyWidth;
         int y = startY;
-        
-        // Determine if this key is in the active 8-key window
-        bool active = (i >= _rootOffset && i < _rootOffset + 8);
-        
-        // Check if this key is currently being pressed
-        int step = (i - _rootOffset) + 8;  // Map to S9-S16
-        bool pressed = (active && step >= 8 && step <= 15 && _keyStates[step].pressed);
-        
+
+        // Calculate the chromatic position of this white key
+        // White keys on screen: C(0) D(1) E(2) F(3) G(4) A(5) B(6) C(7) D(8) E(9) F(10) G(11) A(12) B(13)
+        // Chromatic positions:   0    2    4    5    7    9   11    0    2    4     5     7     9    11
+        int whiteKeyChromaticPositions[] = {0, 2, 4, 5, 7, 9, 11, 0, 2, 4, 5, 7, 9, 11};
+        int octaveOffset = (i >= 7) ? 12 : 0;  // Second octave starts at position 7
+        int keyNote = baseNote + whiteKeyChromaticPositions[i] + octaveOffset;
+
+        // Check if this white key is one of the 8 active keys (S9-S16)
+        bool active = false;
+        int activeStep = -1;
+        for (int step = 8; step <= 15; ++step) {
+            if (noteForKey(step) == keyNote) {
+                active = true;
+                activeStep = step;
+                break;
+            }
+        }
+
+        bool pressed = (active && activeStep >= 0 && _keyStates[activeStep].pressed);
+
         // Draw key outline
         canvas.setColor(active ? Color::Bright : Color::Low);
         canvas.drawRect(x, y, whiteKeyWidth - 1, whiteKeyHeight);
-        
+
         // Fill key
         if (pressed) {
             canvas.setColor(Color::Medium);
@@ -202,38 +280,35 @@ void KeyboardPage::draw(Canvas &canvas) {
     // Black keys appear BETWEEN white keys at positions:
     // Octave 1: C#(1), D#(2), F#(4), G#(5), A#(6)
     // Octave 2: C#(8), D#(9), F#(11), G#(12), A#(13)
-    // No black keys after E(2) or B(6,13)
-    int allBlackKeyPositions[] = {1, 2, 4, 5, 6, 8, 9, 11, 12, 13};  // 10 black keys total
+    // Chromatic values for black keys on screen:
+    // Screen pos: 1=C#  2=D#  4=F#  5=G#  6=A#  8=C#  9=D#  11=F#  12=G#  13=A#
+    int allBlackKeyScreenPos[] = {1, 2, 4, 5, 6, 8, 9, 11, 12, 13};
+    int allBlackKeyChromaticPos[] = {1, 3, 6, 8, 10, 1, 3, 6, 8, 10};  // Chromatic positions
+    int allBlackKeyOctaveOffset[] = {0, 0, 0, 0, 0, 12, 12, 12, 12, 12};  // Octave offset
     int numBlackKeys = 10;
 
     for (int i = 0; i < numBlackKeys; ++i) {
-        int screenPos = allBlackKeyPositions[i];
+        int screenPos = allBlackKeyScreenPos[i];
+        int chromaticPos = allBlackKeyChromaticPos[i];
+        int octaveOff = allBlackKeyOctaveOffset[i];
+        int keyNote = baseNote + chromaticPos + octaveOff;
 
         // Position black key between white keys on screen
         int x = startX + screenPos * whiteKeyWidth - (blackKeyWidth / 2);
         int y = startY;
 
-        // Calculate which chromatic position this represents relative to rootOffset
-        int chromPos = screenPos;
-
-        // Check if in active 8-key window
-        bool active = (chromPos >= _rootOffset && chromPos < _rootOffset + 8);
-
-        // Check if pressed (only if in active window and matches hardware button)
-        bool pressed = false;
-        if (active) {
-            // Map screen position to hardware step
-            int relativePos = chromPos - _rootOffset;
-            int blackKeySteps[] = {1, 2, 4, 5, 6};  // S2,S3,S5,S6,S7
-            int blackKeyChromaticPos[] = {1, 3, 6, 8, 10};  // Within active window
-
-            for (int j = 0; j < 5; ++j) {
-                if (relativePos == blackKeyChromaticPos[j]) {
-                    pressed = _keyStates[blackKeySteps[j]].pressed;
-                    break;
-                }
+        // Check if this black key is one of the active keys (S1-S8)
+        bool active = false;
+        int activeStep = -1;
+        for (int step = 0; step < 8; ++step) {
+            if (noteForKey(step) == keyNote) {
+                active = true;
+                activeStep = step;
+                break;
             }
         }
+
+        bool pressed = (active && activeStep >= 0 && _keyStates[activeStep].pressed);
 
         // Draw black key
         if (pressed) {
@@ -249,34 +324,66 @@ void KeyboardPage::draw(Canvas &canvas) {
         }
     }
 
-    // Show pressed note and octave on right (BOLD) - centered vertically with keyboard
-    canvas.setFont(Font::Small);
-    canvas.setColor(Color::Bright);
+    // Draw step indicator below keyboard
+    const auto &sequence = _project.selectedNoteSequence();
+    const auto &trackEngine = _engine.selectedTrackEngine().as<NoteTrackEngine>();
+    int stepsY = startY + whiteKeyHeight + 4;  // 4px gap below keyboard
+    int stepWidth = 10;
+    int stepHeight = 4;
+    int stepsPerPage = 16;
+
+    // Calculate which page of steps to show based on current playback position
+    int currentStep = trackEngine.isActiveSequence(sequence) ? trackEngine.currentStep() : -1;
+    int currentPage = (currentStep >= 0) ? (currentStep / stepsPerPage) : 0;
+    int startStep = currentPage * stepsPerPage;
+    int totalPages = (CONFIG_STEP_COUNT + stepsPerPage - 1) / stepsPerPage;
+
+    // Draw 16 steps with spacing between groups
+    for (int i = 0; i < stepsPerPage; ++i) {
+        int stepIndex = startStep + i;
+        if (stepIndex >= CONFIG_STEP_COUNT) break;
+
+        int x = startX + (i * stepWidth) + (i / 8) * 8;  // Extra gap after 8 steps
+
+        // Check if this step has a gate
+        bool hasGate = sequence.step(stepIndex).gate();
+
+        // Highlight current playing step
+        bool isCurrent = (stepIndex == currentStep);
+
+        canvas.setBlendMode(BlendMode::Set);
+        if (isCurrent) {
+            canvas.setColor(Color::Bright);
+            canvas.fillRect(x, stepsY, stepWidth - 1, stepHeight);
+        } else if (hasGate) {
+            canvas.setColor(Color::Medium);
+            canvas.fillRect(x, stepsY, stepWidth - 1, stepHeight);
+        } else {
+            canvas.setColor(Color::Low);
+            canvas.drawRect(x, stepsY, stepWidth - 1, stepHeight);
+        }
+    }
+
+    // Draw page indicator circles under the last note played area (right side)
+    // Circle indicators: filled for current page, outline for others
+    int circleRadius = 2;
+    int circleSpacing = 8;
+    int circleY = keyboardMidY + 10;  // Below the last note played text
+    int totalCircleWidth = (totalPages * circleRadius * 2) + ((totalPages - 1) * circleSpacing);
+    int circleStartX = keyboardEndX + (rightMargin - totalCircleWidth) / 2;
+
     canvas.setBlendMode(BlendMode::Set);
+    for (int page = 0; page < totalPages; ++page) {
+        int circleX = circleStartX + (page * (circleRadius * 2 + circleSpacing)) + circleRadius;
 
-    for (int i = 0; i < 16; ++i) {
-        if (_keyStates[i].pressed && _keyStates[i].note >= 0) {
-            int octave = _keyStates[i].note / 12;
-            int noteIndex = _keyStates[i].note % 12;
-
-            // Note name - centered vertically with keyboard
-            FixedStringBuilder<8> noteStr;
-            noteStr("%s", noteNames[noteIndex]);
-            int noteTextWidth = canvas.textWidth(noteStr);
-            int noteX = keyboardEndX + (rightMargin - noteTextWidth) / 2;
-            int noteY = keyboardMidY - 10;  // Match track number vertical position
-            canvas.drawText(noteX, noteY, noteStr);
-
-            // Octave number
-            canvas.setFont(Font::Small);  // Use Small (bold) instead of Tiny
-            FixedStringBuilder<8> octaveStr;
-            octaveStr("O%d", octave);
-            int octaveTextWidth = canvas.textWidth(octaveStr);
-            int octaveX = keyboardEndX + (rightMargin - octaveTextWidth) / 2;
-            int octaveY = noteY + 12;  // Below note name
-            canvas.drawText(octaveX, octaveY, octaveStr);
-
-            break;
+        if (page == currentPage) {
+            // Filled circle for current page
+            canvas.setColor(Color::Bright);
+            canvas.fillRect(circleX - circleRadius, circleY - circleRadius, circleRadius * 2, circleRadius * 2);
+        } else {
+            // Outline circle for other pages
+            canvas.setColor(Color::Medium);
+            canvas.drawRect(circleX - circleRadius, circleY - circleRadius, circleRadius * 2, circleRadius * 2);
         }
     }
 }
@@ -287,64 +394,85 @@ void KeyboardPage::updateLeds(Leds &leds) {
         leds.set(i, false, false);
     }
 
-    // White keys (S9-S16): Solid GREEN LEDs always on, inverted addressing
+    // White keys (S9-S16): Solid GREEN LEDs always on
     for (int i = 8; i < 16; ++i) {
-        int ledIndex = 15 - i;  // S9=LED6, S10=LED5, ..., S16=LED0
-        // Always green (not red), brighter when pressed
+        int ledIndex = 15 - i;  // Inverted: S9=LED6, S10=LED5, ..., S16=LED0
         leds.set(ledIndex, false, true);  // Green
     }
 
-    // Black keys (S2,S3,S5,S6,S7): Red LEDs that scroll with encoder
-    // Piano pattern within active 8-key window: positions 1,3,6,8,10
-    int blackKeySteps[] = {1, 2, 4, 5, 6};  // S2,S3,S5,S6,S7
-    int blackKeyChromaticPos[] = {1, 3, 6, 8, 10};  // Relative to rootOffset
+    // Black keys (S1-S8): RED LEDs when button maps to a valid black key
+    for (int step = 0; step < 8; ++step) {
+        // Check if this button maps to a valid black key
+        bool hasBlackKey = (noteForKey(step) >= 0);
 
-    for (int i = 0; i < 5; ++i) {
-        int step = blackKeySteps[i];
-        int chromPos = blackKeyChromaticPos[i];
-        int ledIndex = 15 - step;  // Inverted: S2=LED13, S3=LED12, S5=LED10, S6=LED9, S7=LED8
-
-        // Check if this black key position is within the active window
-        bool inActiveRange = (chromPos >= _rootOffset && chromPos < _rootOffset + 8);
-
-        // Red LED on when in active range
-        leds.set(ledIndex, inActiveRange, false);  // Red when active
+        int ledIndex = step + 8;  // Direct: S1=LED8, S2=LED9, ..., S8=LED15
+        leds.set(ledIndex, hasBlackKey, false);  // Red when button maps to black key
     }
 
-    // Pagination LEDs: Use Global4 (left) and Global5 (right) - step page indicators
-    leds.set(Key::Global4, false, _rootOffset > 0);   // Left: green when can scroll left
-    leds.set(Key::Global5, false, _rootOffset < 12);  // Right: green when can scroll right (11 is max)
+    // Pagination LEDs: Use Global4 (left) and Global5 (right) - always on (wraps around)
+    leds.set(Key::Global4, false, true);   // Left: always green (wraps around)
+    leds.set(Key::Global5, false, true);  // Right: always green (wraps around)
 }
 
 void KeyboardPage::keyDown(KeyEvent &event) {
     const auto &key = event.key();
 
-    if (key.isStep()) {
+    if (key.isStep() && !key.pageModifier()) {
         int step = key.step();
         if (noteForKey(step) >= 0) {
             playNote(step);
-            event.consume();
         }
+        // Consume step events only when not navigating to prevent writing to underlying sequencer
+        event.consume();
+        return;
     }
 }
 
 void KeyboardPage::keyUp(KeyEvent &event) {
     const auto &key = event.key();
 
-    if (key.isStep()) {
+    if (key.isStep() && !key.pageModifier()) {
         int step = key.step();
         if (noteForKey(step) >= 0) {
             releaseNote(step);
-            event.consume();
         }
+        // Consume step events only when not navigating to prevent interaction with underlying sequencer
+        event.consume();
+        return;
     }
 }
 
 void KeyboardPage::keyPress(KeyPressEvent &event) {
     const auto &key = event.key();
 
-    // Track selection with double-tap
-    if (key.isTrackSelect() && !key.pageModifier()) {
+    // Handle transport controls (Play/Stop/Record) - forward to engine
+    if (key.is(Key::Play)) {
+        if (key.pageModifier()) {
+            _engine.toggleRecording();
+        } else {
+            _engine.togglePlay(key.shiftModifier());
+        }
+        event.consume();
+        return;
+    }
+
+    // Handle Performer button - pass through to TopPage for double-tap toggle
+    if (key.isPerformer() && !key.pageModifier()) {
+        // Don't consume - let TopPage handle the double-tap toggle
+        return;
+    }
+
+    // Handle page navigation when PAGE is held
+    // Check if this is a page navigation key (not step/track selection without page modifier)
+    if (key.pageModifier()) {
+        // Close keyboard for any page navigation
+        close();
+        // Don't consume - let TopPage handle the navigation
+        return;
+    }
+
+    // Only handle keyboard-specific actions when PAGE is NOT held
+    if (!key.pageModifier() && key.isTrackSelect()) {
         int trackButton = key.trackSelect();
         int targetTrack = (_trackBank * 8) + trackButton;
 
@@ -373,9 +501,23 @@ void KeyboardPage::keyPress(KeyPressEvent &event) {
         return;
     }
 
-    // F3 (center) = Exit
+    // F1 = INIT (clear sequence)
+    if (key.is(Key::F0)) {
+        initSequence();
+        event.consume();
+        return;
+    }
+
+    // F2 = DUPL (duplicate sequence)
+    if (key.is(Key::F1)) {
+        duplicateSequence();
+        event.consume();
+        return;
+    }
+
+    // F3 = ARP (arpeggiator placeholder)
     if (key.is(Key::F2)) {
-        close();
+        arpeggiator();
         event.consume();
         return;
     }
@@ -437,9 +579,13 @@ void KeyboardPage::keyPress(KeyPressEvent &event) {
 }
 
 void KeyboardPage::encoder(EncoderEvent &event) {
-    // Encoder shifts root note by 1 semitone (0-11 range)
+    // Encoder shifts active white key window by 1 white key (0-6 range: C D E F G A B)
     int oldOffset = _rootOffset;
-    _rootOffset = clamp(_rootOffset + event.value(), 0, 11);
+    _rootOffset = _rootOffset + event.value();
+
+    // Wrap around: 0-6 range (7 white keys per octave)
+    while (_rootOffset < 0) _rootOffset += 7;
+    while (_rootOffset >= 7) _rootOffset -= 7;
 
     if (_rootOffset != oldOffset) {
         for (int i = 0; i < 16; ++i) {
@@ -448,4 +594,21 @@ void KeyboardPage::encoder(EncoderEvent &event) {
             }
         }
     }
+}
+
+void KeyboardPage::initSequence() {
+    // Clear the currently selected sequence
+    _project.selectedNoteSequence().clearSteps();
+    showMessage("STEPS INITIALIZED");
+}
+
+void KeyboardPage::duplicateSequence() {
+    // Duplicate the currently selected sequence
+    _project.selectedNoteSequence().duplicateSteps();
+    showMessage("STEPS DUPLICATED");
+}
+
+void KeyboardPage::arpeggiator() {
+    // Placeholder for future arpeggiator functionality
+    showMessage("ARP NOT YET IMPLEMENTED");
 }

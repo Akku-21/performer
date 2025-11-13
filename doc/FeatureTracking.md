@@ -29,7 +29,8 @@ Priorities follow the numeric convention already used in `doc/Priorities.md` (hi
 | Bipolar ADSR envelope mode | Done | ADSR envelopes can now output bipolar voltage (-5V to +5V) when routed to CV; toggle on Modulator Page 2; shipped in v0.0.75. | P4 | ADSR bipolar mode request |
 | Startup reliability improvements | Done | Added 300ms SD card init delay and error handling to prevent boot crashes; shipped in v0.0.75. | P4 | Stability improvement |
 | Undo/redo via double-tap Left/Right | Planning | Implement a 16-entry history buffer with double-tap Left/Right for undo/redo; define scope (global vs page), persistence, and feedback. | P4 | Workflow polish request |
-| Keyboard function page | Planning | Scope new page showing full keyboard with routing-friendly interaction; design layout, navigation, and integration with mixer matrix work. | P3 | Keyboard feature branch kickoff |
+| Keyboard page INIT/DUPL/ARP functions | Done | Added F1 (INIT) to clear sequence, F2 (DUPL) to duplicate sequence, F3 (ARP) placeholder for future arpeggiator; shipped in v0.0.76. | P3 | Keyboard quick edit request |
+| Keyboard page navigation fixes | Done | Fixed PAGE button navigation (exits keyboard mode; PAGE + button navigates to pages), octave labels (F4/F5), root note octave display, and improved layout with centered text; shipped in v0.0.76. | P4 | Keyboard usability improvements |
 
 ## Known Bugs
 
@@ -40,10 +41,9 @@ Priorities follow the numeric convention already used in `doc/Priorities.md` (hi
 | Modulator waveform Y-axis indicator is too thin | Done | Medium | Thickened centerline and verified in simulator. | Modulator scope visibility feedback |
 | LFO waveform dead-zone near extrema | Ready for HW Test | High | Triangle/saw generator now spans full range; verify with MIDI monitor and close if smooth. | Modulator FM workflow feedback |
 | ADSR envelope timing inaccurate and release inactive | In Progress | High | Engine now honours per-stage ms and UI playhead uses clock timing; verify against hardware then mark resolved. | ADSR modulation feedback |
-| Keyboard focus window skips black keys | New | Medium | Rework keyboard page focus navigation so chromatic scrolling includes sharps/flats. | Keyboard feature branch |
-| ^Keyboard note ordering incorrect | New | High | Fix chromatic output order so white/black keys emit C, C#, D, D#, … (current sequence repeats sharps). | Keyboard feature branch |
-| Red LEDs not lighting all steps | New | Medium | Investigate column driver mapping so steps 1/5/8 respond when scrolling keyboard. | Keyboard feature branch |
-| Keyboard info overlay placement | New | Low | Move footer text into main window with header/footer padding; relocate `T#`, root, octave, and last note to requested corners. | Keyboard feature branch |
+| Keyboard page won't exit when entered | Done | High | Fixed in v0.0.76: PAGE button exits keyboard mode; PAGE + any button navigates to that page. | Keyboard navigation issue |
+| Keyboard octave button labels misaligned | Done | Medium | Fixed in v0.0.76: OCT-/OCT+ now show at correct F4/F5 positions. | Keyboard display issue |
+| Keyboard root note displays wrong octave | Done | Medium | Fixed in v0.0.76: Root note now shows MIDI octave - 1 for correct display. | Keyboard display issue |
 
 ^ indicates the bug may be caused by the item immediately above it.
 

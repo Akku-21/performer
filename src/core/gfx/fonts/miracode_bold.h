@@ -103,9 +103,9 @@ static BitmapFontGlyph miracode_bold_glyphs[] = {
   {    79,   8,  11,   8,    0,   -7 },   // 0x28 '('
   {    90,   8,  11,   8,    0,   -7 },   // 0x29 ')'
   {   101,   8,  11,   8,    0,   -7 },   // 0x2A '*'
-  {   112,   8,   9,   8,    0,   -6 },   // 0x2B '+' (centered, moved down 1px)
+  {   112,   8,  11,   8,    0,   -2 },   // 0x2B '+' (vertically centered with baseline)
   {   121,   8,   5,   8,    0,   -7 },   // 0x2C ','
-  {   126,   8,   7,   8,    0,   -5 },   // 0x2D '-' (centered, moved down 2px)
+  {   126,   8,   7,   8,    0,   -1 },   // 0x2D '-' (vertically centered with baseline)
   {   133,   8,   4,   8,    0,    0 },   // 0x2E '.' (moved to bottom, yOffset 0)
   {   137,   9,  11,   8,   -1,   -7 },   // 0x2F '/'
   {   150,   8,  11,   8,    0,   -7 },   // 0x30 '0'
