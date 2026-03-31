@@ -104,7 +104,8 @@ public:
                     _adsrTimer[index] = 0;
                 } else {
                     // At 120 BPM, 1 tick = ~2.6ms (CONFIG_PPQN=192, 60000ms/120bpm = 500ms per beat, 500/192 = 2.6ms)
-                    int attackTicks = (attackMs * CONFIG_PPQN) / 2500; // Rough conversion: ms to ticks
+                    // Convert ms to ticks: ticks = ms / ms_per_tick = ms * CONFIG_PPQN / 500 (at 120 BPM)
+                    int attackTicks = (attackMs * CONFIG_PPQN) / 500;
                     _adsrTimer[index]++;
                     level = utils::clamp(static_cast<int>((127 * _adsrTimer[index]) / attackTicks), 0, 127);
                     if (level >= 127) {
@@ -121,7 +122,7 @@ public:
                     level = sustainLevel;
                     _adsrState[index] = ADSRState::Sustain;
                 } else {
-                    int decayTicks = (decayMs * CONFIG_PPQN) / 2500;
+                    int decayTicks = (decayMs * CONFIG_PPQN) / 500;
                     _adsrTimer[index]++;
                     int decayAmount = 127 - sustainLevel;
                     level = 127 - utils::clamp(static_cast<int>((decayAmount * _adsrTimer[index]) / decayTicks), 0, decayAmount);
@@ -142,7 +143,7 @@ public:
                     level = 0;
                     _adsrState[index] = ADSRState::Idle;
                 } else {
-                    int releaseTicks = (releaseMs * CONFIG_PPQN) / 2500;
+                    int releaseTicks = (releaseMs * CONFIG_PPQN) / 500;
                     _adsrTimer[index]++;
                     level = startLevel - utils::clamp(static_cast<int>((startLevel * _adsrTimer[index]) / releaseTicks), 0, startLevel);
                     if (level <= 0) {
@@ -264,7 +265,7 @@ private:
         }
         // At 120 BPM, 1 tick = ~2.6ms, so we calculate ticks needed for smooth time
         // CONFIG_PPQN = 192 ticks per quarter note
-        int ticksForSmooth = (smoothMs * CONFIG_PPQN) / 2500;  // Approximate ms to ticks
+        int ticksForSmooth = (smoothMs * CONFIG_PPQN) / 500;
         return (ticksForSmooth > 0) ? ticksForSmooth : 1;
     }
 
