@@ -5,6 +5,7 @@
 #include "Serialize.h"
 #include "ModelUtils.h"
 #include "NoteTrack.h"
+#include "TuringMachineSequence.h"
 #if CONFIG_ENABLE_CURVE_TRACKS
 #include "CurveTrack.h"
 #endif
@@ -42,6 +43,7 @@ public:
 #if CONFIG_ENABLE_MIDICV_TRACKS
         MidiCv,
 #endif
+        TuringMachine,
         Last,
         Default = Note
     };
@@ -55,6 +57,7 @@ public:
 #if CONFIG_ENABLE_MIDICV_TRACKS
         case TrackMode::MidiCv: return "MIDI/CV";
 #endif
+        case TrackMode::TuringMachine: return "Turing";
         case TrackMode::Last:   break;
         }
         return nullptr;
@@ -69,6 +72,7 @@ public:
 #if CONFIG_ENABLE_MIDICV_TRACKS
         case TrackMode::MidiCv: return 2;
 #endif
+        case TrackMode::TuringMachine: return 3;
         case TrackMode::Last:   break;
         }
         return 0;
@@ -114,6 +118,9 @@ public:
 
     const NoteTrack &noteTrack() const { SANITIZE_TRACK_MODE(_trackMode, TrackMode::Note); return *_track.note; }
           NoteTrack &noteTrack()       { SANITIZE_TRACK_MODE(_trackMode, TrackMode::Note); return *_track.note; }
+
+    const TuringMachineSequence &turingMachineSequence() const { SANITIZE_TRACK_MODE(_trackMode, TrackMode::TuringMachine); return _turingMachineSequence; }
+          TuringMachineSequence &turingMachineSequence()       { SANITIZE_TRACK_MODE(_trackMode, TrackMode::TuringMachine); return _turingMachineSequence; }
 
     // curveTrack
 #if CONFIG_ENABLE_CURVE_TRACKS
@@ -190,6 +197,8 @@ private:
         MidiCvTrack *midiCv;
 #endif
     } _track;
+
+    TuringMachineSequence _turingMachineSequence;
 
     friend class Project;
     friend class ClipBoard;

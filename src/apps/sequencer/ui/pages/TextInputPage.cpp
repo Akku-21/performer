@@ -95,7 +95,7 @@ void TextInputPage::draw(Canvas &canvas) {
         canvas.drawTextCentered(charsX + ix * 10, charsY + iy * 10, 10, 10, FixedStringBuilder<2>("%c", characterSet[i]));
         if (_selectedIndex == i) {
             canvas.setColor(pageKeyState()[Key::Encoder] ? Color::Bright : Color::Medium);
-            canvas.drawRect(charsX + ix * 10, charsY + iy * 10 + 1, 9, 9);
+            canvas.drawRect(charsX + ix * 10, charsY + iy * 10, 9, 10);
             canvas.setColor(Color::Bright);
         }
         ++ix;

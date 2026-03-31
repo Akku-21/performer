@@ -22,6 +22,9 @@ void Track::clearPattern(int patternIndex) {
     case TrackMode::MidiCv:
         break;
 #endif
+    case TrackMode::TuringMachine:
+        _turingMachineSequence.clear();
+        break;
     case TrackMode::Last:
         break;
     }
@@ -41,6 +44,8 @@ void Track::copyPattern(int src, int dst) {
     case TrackMode::MidiCv:
         break;
 #endif
+    case TrackMode::TuringMachine:
+        break;
     case TrackMode::Last:
         break;
     }
@@ -67,6 +72,9 @@ void Track::gateOutputName(int index, StringBuilder &str) const {
         _track.midiCv->gateOutputName(index, str);
         break;
 #endif
+    case TrackMode::TuringMachine:
+        str("Gate");
+        break;
     case TrackMode::Last:
         break;
     }
@@ -85,6 +93,9 @@ void Track::cvOutputName(int index, StringBuilder &str) const {
         _track.midiCv->cvOutputName(index, str);
         break;
 #endif
+    case TrackMode::TuringMachine:
+        str("CV");
+        break;
     case TrackMode::Last:
         break;
     }
@@ -108,6 +119,9 @@ void Track::write(VersionedSerializedWriter &writer) const {
         _track.midiCv->write(writer);
         break;
 #endif
+    case TrackMode::TuringMachine:
+        _turingMachineSequence.write(writer);
+        break;
     case TrackMode::Last:
         break;
     }
@@ -133,6 +147,9 @@ void Track::read(VersionedSerializedReader &reader) {
         _track.midiCv->read(reader);
         break;
 #endif
+    case TrackMode::TuringMachine:
+        _turingMachineSequence.read(reader);
+        break;
     case TrackMode::Last:
         break;
     }
@@ -161,6 +178,8 @@ void Track::initContainer() {
         _track.midiCv = _container.create<MidiCvTrack>();
         break;
 #endif
+    case TrackMode::TuringMachine:
+        break;
     case TrackMode::Last:
         break;
     }
@@ -188,6 +207,8 @@ void Track::setContainerTrackIndex(int trackIndex) {
         _track.midiCv->setTrackIndex(trackIndex);
         break;
 #endif
+    case TrackMode::TuringMachine:
+        break;
     case TrackMode::Last:
         break;
     }

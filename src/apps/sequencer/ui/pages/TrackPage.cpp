@@ -87,6 +87,9 @@ void TrackPage::setTrack(Track &track) {
         newListModel = &_midiCvTrackListModel;
         break;
 #endif
+    case Track::TrackMode::TuringMachine:
+        newListModel = &_noteTrackListModel;
+        break;
     case Track::TrackMode::Last:
         ASSERT(false, "invalid track mode");
         break;

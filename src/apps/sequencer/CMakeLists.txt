@@ -12,6 +12,7 @@ set(sources
     engine/CvInput.cpp
     engine/CvOutput.cpp
     engine/Engine.cpp
+    engine/TuringMachineTrackEngine.cpp
     # engine/MidiCvTrackEngine.cpp  # DISABLED - removed for memory
     engine/MidiLearn.cpp
     engine/MidiOutputEngine.cpp
@@ -48,6 +49,7 @@ set(sources
     model/Settings.cpp
     model/Song.cpp
     model/TimeSignature.cpp
+    model/TuringMachineSequence.cpp
     model/Track.cpp
     model/Types.cpp
     model/UserScale.cpp
@@ -90,6 +92,7 @@ set(sources
     ui/pages/MonitorPage.cpp
     ui/pages/NoteSequenceEditPage.cpp
     ui/pages/NoteSequencePage.cpp
+    ui/pages/TuringMachineEditPage.cpp
     ui/pages/OverviewPage.cpp
     ui/pages/PatternPage.cpp
     ui/pages/PerformerPage.cpp

@@ -376,6 +376,8 @@ void LaunchpadController::sequenceSetFirstStep(int step) {
         _project.selectedCurveSequence().setFirstStep(step);
         break;
 #endif
+    case Track::TrackMode::TuringMachine:
+        break;
     default:
         break;
     }
@@ -391,6 +393,8 @@ void LaunchpadController::sequenceSetLastStep(int step) {
         _project.selectedCurveSequence().setLastStep(step);
         break;
 #endif
+    case Track::TrackMode::TuringMachine:
+        break;
     default:
         break;
     }
@@ -406,6 +410,8 @@ void LaunchpadController::sequenceSetRunMode(int mode) {
         _project.selectedCurveSequence().setRunMode(Types::RunMode(mode));
         break;
 #endif
+    case Track::TrackMode::TuringMachine:
+        break;
     default:
         break;
     }
@@ -415,6 +421,8 @@ void LaunchpadController::sequenceToggleStep(int row, int col) {
     switch (_project.selectedTrack().trackMode()) {
     case Track::TrackMode::Note:
         sequenceToggleNoteStep(row, col);
+        break;
+    case Track::TrackMode::TuringMachine:
         break;
     default:
         break;
@@ -447,6 +455,8 @@ void LaunchpadController::sequenceEditStep(int row, int col) {
         sequenceEditCurveStep(row, col);
         break;
 #endif
+    case Track::TrackMode::TuringMachine:
+        break;
     default:
         break;
     }
@@ -507,6 +517,8 @@ void LaunchpadController::sequenceDrawLayer() {
         }
         break;
 #endif
+    case Track::TrackMode::TuringMachine:
+        break;
     default:
         break;
     }
@@ -526,6 +538,8 @@ void LaunchpadController::sequenceDrawStepRange(int highlight) {
         break;
     }
 #endif
+    case Track::TrackMode::TuringMachine:
+        break;
     default:
         break;
     }
@@ -543,6 +557,8 @@ void LaunchpadController::sequenceDrawRunMode() {
         break;
     }
 #endif
+    case Track::TrackMode::TuringMachine:
+        break;
     default:
         break;
     }
@@ -558,6 +574,8 @@ void LaunchpadController::sequenceDrawSequence() {
         sequenceDrawCurveSequence();
         break;
 #endif
+    case Track::TrackMode::TuringMachine:
+        break;
     default:
         break;
     }
@@ -658,6 +676,8 @@ void LaunchpadController::patternDraw() {
                     }
                     break;
 #endif
+                case Track::TrackMode::TuringMachine:
+                    break;
                 default:
                     break;
                 }

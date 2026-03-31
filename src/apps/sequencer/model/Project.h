@@ -466,6 +466,9 @@ public:
     const NoteSequence &selectedNoteSequence() const { return noteSequence(_selectedTrackIndex, selectedPatternIndex()); }
           NoteSequence &selectedNoteSequence()       { return noteSequence(_selectedTrackIndex, selectedPatternIndex()); }
 
+    const TuringMachineSequence &selectedTuringMachineSequence() const { return _tracks[_selectedTrackIndex].turingMachineSequence(); }
+          TuringMachineSequence &selectedTuringMachineSequence()       { return _tracks[_selectedTrackIndex].turingMachineSequence(); }
+
     // curveSequence
 #if CONFIG_ENABLE_CURVE_TRACKS
     const CurveSequence &curveSequence(int trackIndex, int patternIndex) const { return _tracks[trackIndex].curveTrack().sequence(patternIndex); }

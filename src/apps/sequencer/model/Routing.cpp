@@ -219,6 +219,8 @@ void Routing::writeTarget(Target target, uint8_t tracks, float normalized) {
                     }
                     break;
 #endif
+                case Track::TrackMode::TuringMachine:
+                    break;
                 case Track::TrackMode::Last:
                     break;
                 }

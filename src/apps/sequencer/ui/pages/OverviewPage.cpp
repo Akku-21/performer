@@ -150,6 +150,8 @@ void OverviewPage::draw(Canvas &canvas) {
         case Track::TrackMode::MidiCv:
             break;
 #endif
+        case Track::TrackMode::TuringMachine:
+            break;
         case Track::TrackMode::Last:
             break;
         }

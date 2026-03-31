@@ -278,6 +278,9 @@ void TopPage::setSequencePage() {
         setMainPage(pages.track);
         break;
 #endif
+    case Track::TrackMode::TuringMachine:
+        setMainPage(pages.turingMachineEdit);
+        break;
     case Track::TrackMode::Last:
         break;
     }
@@ -300,6 +303,9 @@ void TopPage::setSequenceEditPage() {
         setMainPage(pages.track);
         break;
 #endif
+    case Track::TrackMode::TuringMachine:
+        setMainPage(pages.turingMachineEdit);
+        break;
     case Track::TrackMode::Last:
         break;
     }

@@ -3,6 +3,8 @@
 #include "Config.h"
 #include "MidiUtils.h"
 
+#include "TuringMachineTrackEngine.h"
+
 #include "core/Debug.h"
 #include "core/midi/MidiMessage.h"
 
@@ -452,6 +454,9 @@ void Engine::updateTrackSetups() {
                 trackEngine = trackContainer.create<MidiCvTrackEngine>(*this, _model, track, linkedTrackEngine);
                 break;
 #endif
+            case Track::TrackMode::TuringMachine:
+                trackEngine = trackContainer.create<TuringMachineTrackEngine>(*this, _model, track, linkedTrackEngine);
+                break;
             case Track::TrackMode::Last:
                 break;
             }

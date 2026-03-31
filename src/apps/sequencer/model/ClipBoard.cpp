@@ -45,6 +45,11 @@ void ClipBoard::copyCurveSequenceSteps(const CurveSequence &curveSequence, const
 }
 #endif
 
+void ClipBoard::copyTuringMachineSequence(const TuringMachineSequence &sequence) {
+    _type = Type::TuringMachineSequence;
+    _container.as<TuringMachineSequenceWrapper>().sequence = sequence;
+}
+
 void ClipBoard::copyPattern(int patternIndex) {
     _type = Type::Pattern;
     auto &pattern = _container.as<Pattern>();
@@ -60,6 +65,9 @@ void ClipBoard::copyPattern(int patternIndex) {
             pattern.sequences[trackIndex].data.curve = track.curveTrack().sequence(patternIndex);
             break;
 #endif
+        case Track::TrackMode::TuringMachine:
+            pattern.sequences[trackIndex].data.turingMachine = track.turingMachineSequence();
+            break;
         default:
             break;
         }
@@ -109,6 +117,13 @@ void ClipBoard::pasteCurveSequenceSteps(CurveSequence &curveSequence, const Sele
 }
 #endif
 
+void ClipBoard::pasteTuringMachineSequence(TuringMachineSequence &sequence) const {
+    if (canPasteTuringMachineSequence()) {
+        Model::WriteLock lock;
+        sequence = _container.as<TuringMachineSequenceWrapper>().sequence;
+    }
+}
+
 void ClipBoard::pastePattern(int patternIndex) const {
     if (canPastePattern()) {
         Model::WriteLock lock;
@@ -125,6 +140,9 @@ void ClipBoard::pastePattern(int patternIndex) const {
                     track.curveTrack().sequence(patternIndex) = pattern.sequences[trackIndex].data.curve;
                     break;
 #endif
+                case Track::TrackMode::TuringMachine:
+                    track.turingMachineSequence() = pattern.sequences[trackIndex].data.turingMachine;
+                    break;
                 default:
                     break;
                 }
@@ -157,6 +175,10 @@ bool ClipBoard::canPasteCurveSequence() const {
 
 bool ClipBoard::canPasteCurveSequenceSteps() const {
     return _type == Type::CurveSequenceSteps;
+}
+
+bool ClipBoard::canPasteTuringMachineSequence() const {
+    return _type == Type::TuringMachineSequence;
 }
 
 bool ClipBoard::canPastePattern() const {

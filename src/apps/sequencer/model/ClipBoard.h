@@ -5,6 +5,7 @@
 #include "Track.h"
 #include "NoteSequence.h"
 #include "CurveSequence.h"
+#include "TuringMachineSequence.h"
 #include "Project.h"
 #include "UserScale.h"
 
@@ -25,6 +26,7 @@ public:
     void copyNoteSequenceSteps(const NoteSequence &noteSequence, const SelectedSteps &selectedSteps);
     void copyCurveSequence(const CurveSequence &curveSequence);
     void copyCurveSequenceSteps(const CurveSequence &curveSequence, const SelectedSteps &selectedSteps);
+    void copyTuringMachineSequence(const TuringMachineSequence &sequence);
     void copyPattern(int patternIndex);
     void copyUserScale(const UserScale &userScale);
 
@@ -33,6 +35,7 @@ public:
     void pasteNoteSequenceSteps(NoteSequence &noteSequence, const SelectedSteps &selectedSteps) const;
     void pasteCurveSequence(CurveSequence &curveSequence) const;
     void pasteCurveSequenceSteps(CurveSequence &curveSequence, const SelectedSteps &selectedSteps) const;
+    void pasteTuringMachineSequence(TuringMachineSequence &sequence) const;
     void pastePattern(int patternIndex) const;
     void pasteUserScale(UserScale &userScale) const;
 
@@ -41,6 +44,7 @@ public:
     bool canPasteNoteSequenceSteps() const;
     bool canPasteCurveSequence() const;
     bool canPasteCurveSequenceSteps() const;
+    bool canPasteTuringMachineSequence() const;
     bool canPastePattern() const;
     bool canPasteUserScale() const;
 
@@ -52,6 +56,7 @@ private:
         NoteSequenceSteps,
         CurveSequence,
         CurveSequenceSteps,
+        TuringMachineSequence,
         Pattern,
         UserScale,
     };
@@ -66,17 +71,22 @@ private:
         SelectedSteps selected;
     };
 
+    struct TuringMachineSequenceWrapper {
+        TuringMachineSequence sequence;
+    };
+
     struct Pattern {
         struct {
             Track::TrackMode trackMode;
             union {
                 NoteSequence note;
                 CurveSequence curve;
+                TuringMachineSequence turingMachine;
             } data;
         } sequences[CONFIG_TRACK_COUNT];
     };
 
     Project &_project;
     Type _type = Type::None;
-    Container<Track, NoteSequence, NoteSequenceSteps, CurveSequence, CurveSequenceSteps, Pattern, UserScale> _container;
+    Container<Track, NoteSequence, NoteSequenceSteps, CurveSequence, CurveSequenceSteps, TuringMachineSequenceWrapper, Pattern, UserScale> _container;
 };

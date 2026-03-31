@@ -20,6 +20,7 @@
 #include "MonitorPage.h"
 #include "NoteSequenceEditPage.h"
 #include "NoteSequencePage.h"
+#include "TuringMachineEditPage.h"
 #include "OverviewPage.h"
 #include "PatternPage.h"
 #include "PerformerPage.h"
@@ -56,6 +57,7 @@ struct Pages {
     CurveSequencePage curveSequence;
 #endif
     NoteSequenceEditPage noteSequenceEdit;
+    TuringMachineEditPage turingMachineEdit;
 #if CONFIG_ENABLE_CURVE_TRACKS
     CurveSequenceEditPage curveSequenceEdit;
 #endif
@@ -106,6 +108,7 @@ struct Pages {
         curveSequence(manager, context),
 #endif
         noteSequenceEdit(manager, context),
+        turingMachineEdit(manager, context),
 #if CONFIG_ENABLE_CURVE_TRACKS
         curveSequenceEdit(manager, context),
 #endif
