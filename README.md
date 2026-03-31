@@ -134,8 +134,8 @@ This fork adds extensive performance-oriented features for live electronic music
 ### Visual Matrix Router (PAGE+S5)
 - **Patch-bay page** — connect any modulator or CV input to multiple MIDI CC destinations simultaneously
 - **1:N routing** — one source can drive many CC parameters at once; replaces the 1:1 limitation of the old MIDI output page
-- **Sources**: MOD 1–8, CV IN 1–4 (NOTE 1–16 in Phase 3)
-- **Destinations**: MIDI CC 0–127, 8 banks of 16, any MIDI channel 1–16
+- **Sources**: MOD 1–8, CV IN 1–4, NOTE 1–16 (track pitch as 0-127)
+- **Destinations**: MIDI CC 0–127 (8 banks of 16, any MIDI channel 1–16) or CV OUT 1–8 (additive offset)
 - **Amount**: -100..+100% per connection (negative = inverted), 0 = bypass
 - **Visual patchbay**: source nodes top row, destination nodes bottom row, connections drawn between them
 - **F-Key layout**:
@@ -143,7 +143,8 @@ This fork adds extensive performance-oriented features for live electronic music
 | Key | Function |
 |-----|----------|
 | F1 | Cycle source tab: MOD → CV IN → NOTE 1-8 → NOTE 9-16 |
-| F4 | Cycle CC bank (16 CCs per bank, 8 banks = CC 0–127) |
+| F3 | Cycle destination tab: MIDI CC → CV OUT |
+| F4 | Cycle CC bank (16 CCs per bank, 8 banks = CC 0–127) — MIDI CC tab only |
 
 - **T0–T7**: select source node (exclusive)
 - **S0–S15**: select destination CC node (exclusive), SHIFT+S = multi-select
@@ -152,7 +153,7 @@ This fork adds extensive performance-oriented features for live electronic music
 - **SHIFT+LEFT/RIGHT**: no-op (reserved)
 - **Context menu (SHIFT+PAGE)**: CLR ALL / RNDM
 - **MIDI output**: live MIDI CC messages sent each clock tick per active connections
-- **Serialization**: routing saved/loaded with project (version 33, backward compatible)
+- **Serialization**: routing saved/loaded with project (versions 33+34, backward compatible)
 
 ### UI/UX Improvements (v0.0.63)
 - **SVG-based startup logo** - Custom POW|FORMER logo with animated space invaders
@@ -165,7 +166,7 @@ This fork adds extensive performance-oriented features for live electronic music
 - **Better parameter editing** - Encoder acceleration and shift modifiers
 
 ### Technical Details (v0.0.63)
-- **Memory footprint**: 376KB firmware (376096 text + 6732 data + 153972 bss)
+- **Memory footprint**: 380KB firmware (380328 text + 6732 data + 154036 bss)
 - **Project compatibility**: Version27 format with backward compatibility
 - **PPQN resolution**: 192 ticks per quarter note
 - **Microtiming resolution**: 7-bit (-63 to +63), ~1ms per step @ 120 BPM
