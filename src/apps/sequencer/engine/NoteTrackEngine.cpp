@@ -304,13 +304,20 @@ void NoteTrackEngine::triggerStep(uint32_t tick, uint32_t divisor) {
     const auto &step = evalSequence.step(_currentStep);
 
     // Gate offset is stored as 0-15, representing sub-divisions of the current step
-    // For 16th notes: gateOffset range = divisor = 48 ticks (64th note grid)
     uint32_t gateOffset = (step.gateOffset() * divisor) / (NoteSequence::GateOffset::Max + 1);
+    // Clamp offset to prevent notes from crossing step boundaries at high tempos
+    if (gateOffset >= divisor) {
+        gateOffset = divisor - 1;
+    }
 
     bool stepGate = evalStepGate(step, _noteTrack.gateProbabilityBias()) || useFillGates;
     if (stepGate) {
         stepGate = evalStepCondition(step, _sequenceState.iteration(), useFillCondition, _prevCondition);
     }
+
+    // Apply swing to the grid tick first, then add micro-timing offset afterwards
+    // This prevents swing from re-quantizing the micro-timing offset
+    uint32_t swungTick = Groove::applySwing(tick, swing());
 
     if (stepGate) {
         uint32_t stepLength = (divisor * evalStepLength(step, _noteTrack.lengthBias())) / NoteSequence::Length::Range;
@@ -319,20 +326,20 @@ void NoteTrackEngine::triggerStep(uint32_t tick, uint32_t divisor) {
             uint32_t retriggerLength = divisor / stepRetrigger;
             uint32_t retriggerOffset = 0;
             while (stepRetrigger-- > 0 && retriggerOffset <= stepLength) {
-                _gateQueue.pushReplace({ Groove::applySwing(tick + gateOffset + retriggerOffset, swing()), true });
-                _gateQueue.pushReplace({ Groove::applySwing(tick + gateOffset + retriggerOffset + retriggerLength / 2, swing()), false });
+                _gateQueue.pushReplace({ swungTick + gateOffset + retriggerOffset, true });
+                _gateQueue.pushReplace({ swungTick + gateOffset + retriggerOffset + retriggerLength / 2, false });
                 retriggerOffset += retriggerLength;
             }
         } else {
-            _gateQueue.pushReplace({ Groove::applySwing(tick + gateOffset, swing()), true });
-            _gateQueue.pushReplace({ Groove::applySwing(tick + gateOffset + stepLength, swing()), false });
+            _gateQueue.pushReplace({ swungTick + gateOffset, true });
+            _gateQueue.pushReplace({ Groove::applySwing(tick + divisor, swing()) - divisor + gateOffset + stepLength, false });
         }
     }
 
     if (stepGate || _noteTrack.cvUpdateMode() == NoteTrack::CvUpdateMode::Always) {
         const auto &scale = evalSequence.selectedScale(_model.project().scale());
         int rootNote = evalSequence.selectedRootNote(_model.project().rootNote());
-        _cvQueue.push({ Groove::applySwing(tick + gateOffset, swing()), evalStepNote(step, _noteTrack.noteProbabilityBias(), scale, rootNote, octave, transpose), step.slide() });
+        _cvQueue.push({ swungTick + gateOffset, evalStepNote(step, _noteTrack.noteProbabilityBias(), scale, rootNote, octave, transpose), step.slide() });
     }
 }
 
