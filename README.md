@@ -8,6 +8,12 @@ I'm working to bring this firmware up-to-date, and make myself at home with the 
 
 After encountering instability on the mebitek fork, I've decided to start from the known-good master branch of the original firmware, and carefully work in some of the new features from other forks.
 
+## Akku-21 Improvements
+
+| Change             	| Documentation                                    	|
+|--------------------	|--------------------------------------------------	|
+| Turing Machine     	| documented below                                 	|
+
 ## jackpf Improvements
 
 | Change             	| Documentation                                    	|
@@ -76,6 +82,54 @@ This fork adds extensive performance-oriented features for live electronic music
 - **Enum validation** - Crash protection for loading old projects
 - **Improved display** - Clear source labels ("Mod 1-8", "CV In 1-4", "T9-16")
 
+### Turing Machine Track Mode
+- **Track mode**: Select via Layout page (set any track to "TURING" mode)
+- **Concept**: A 16-bit recirculating shift register that generates evolving melodic CV sequences. At 0% probability the register loops forever (locked pattern). At 50% the pattern gradually mutates. At 100% it's fully random. Inspired by the Music Thing Modular Turing Machine and Buchla's Source of Uncertainty.
+- **Display**:
+  - Header: "TURING" mode label
+  - Loop window indicator bar shows which bits are active (bright = in loop, dim = outside)
+  - 16 bit boxes: filled = bit is 1, empty = bit is 0, red outline = playhead position
+  - Active parameter value shown centered below the bit grid
+- **LED feedback**:
+  - Green = bit is 1 and inside the loop window
+  - Red = current clock position (playhead)
+  - Yellow = playhead on a set bit
+  - Off = bit is 0 or outside loop window
+- **F-Key layers**:
+
+| Key | Label | Function |
+|-----|-------|----------|
+| F1 | BITS | View/edit register bits directly |
+| F2 | PROB | Write probability 0–100% |
+| F3 | LOOP | Loop length (2–16) → Loop start (0–15) on repeat |
+| F4 | SCALE | Scale selection → Root note on repeat |
+| F5 | OUTPUT | Voltage range (1–4V) → Gate mode → Slew on repeat |
+
+- **Step button behavior**:
+  - In BITS layer: tap to toggle individual bits directly
+  - In other layers: hold steps to select, encoder edits parameter for selected steps
+  - SHIFT+step: persist selection (stays after release)
+- **Encoder behavior**:
+  - Turns: edit active layer parameter
+  - SHIFT+turns: coarse step (10x)
+  - With steps held: edit selected steps
+- **SHIFT+LEFT/RIGHT**: Rotate the entire register left/right by 1 bit
+- **Quick-edit (PAGE+S9–S16)**:
+  - S9: Loop Length
+  - S10: Loop Start
+  - S11: Probability
+  - S12: Scale
+  - S13: Root Note
+  - S14: Voltage Range
+  - S15: Gate Mode
+  - S16: Slew
+- **Gate modes**:
+  - MSB: gate follows LSB of the loop window
+  - PROB: gate fires with probability equal to write probability
+  - ALWAYS: gate always on
+- **Context menu (SHIFT+PAGE)**: INIT / COPY / PASTE
+- **Algorithm**: On each clock tick, the MSB of the active loop window is read as the feedback bit. It is probabilistically flipped (based on probability setting). The register shifts right and the (possibly flipped) bit is inserted at the MSB of the loop window. The top 8 bits of the loop window are converted to a 0–255 value, scaled to the voltage range, and quantized to the selected scale.
+
 ### UI/UX Improvements (v0.0.63)
 - **SVG-based startup logo** - Custom POW|FORMER logo with animated space invaders
 - **New Keyboard page** - Dedicated 2-octave keyboard (14 white + 10 black keys) for live note input
@@ -87,7 +141,7 @@ This fork adds extensive performance-oriented features for live electronic music
 - **Better parameter editing** - Encoder acceleration and shift modifiers
 
 ### Technical Details (v0.0.63)
-- **Memory footprint**: 361KB firmware (361028 text + 6660 data + 153404 bss)
+- **Memory footprint**: 369KB firmware (362416 text + 6712 data + 153596 bss)
 - **Project compatibility**: Version27 format with backward compatibility
 - **PPQN resolution**: 192 ticks per quarter note
 - **Microtiming resolution**: 7-bit (-63 to +63), ~1ms per step @ 120 BPM
