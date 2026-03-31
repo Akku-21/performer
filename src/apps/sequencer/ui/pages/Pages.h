@@ -16,6 +16,7 @@
 #include "KeyboardPage.h"
 #include "LayoutPage.h"
 #include "MidiOutputPage.h"
+#include "MatrixRouterPage.h"
 #include "ModulatorPage.h"
 #include "MonitorPage.h"
 #include "NoteSequenceEditPage.h"
@@ -66,6 +67,7 @@ struct Pages {
     SongPage song;
     RoutingPage routing;
     MidiOutputPage midiOutput;
+    MatrixRouterPage matrixRouter;
     UserScalePage userScale;
     ModulatorPage modulator;
     OverviewPage overview;
@@ -117,6 +119,7 @@ struct Pages {
         song(manager, context),
         routing(manager, context),
         midiOutput(manager, context),
+        matrixRouter(manager, context),
         userScale(manager, context),
         modulator(manager, context),
         overview(manager, context),
@@ -149,4 +152,3 @@ struct Pages {
 #endif
     {}
 };
-

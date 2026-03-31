@@ -24,6 +24,7 @@ namespace PageKeyMap {
         Sequence        = Key::Step1,
         Track           = Key::Step2,
         Song            = Key::Step3,
+        MatrixRouter    = Key::Step4,
 
         System          = Key::Track7,
         Monitor         = Key::Step7,
@@ -47,6 +48,7 @@ namespace PageKeyMap {
         case Sequence:
         case Track:
         case Song:
+        case MatrixRouter:
 
         case System:
         case Monitor:

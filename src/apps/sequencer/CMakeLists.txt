@@ -40,6 +40,7 @@ set(sources
     model/MidiOutput.cpp
     model/Model.cpp
     model/ModelUtils.cpp
+    model/MatrixRouter.cpp
     model/NoteSequence.cpp
     model/NoteTrack.cpp
     model/PlayState.cpp
@@ -88,6 +89,7 @@ set(sources
     ui/pages/LayoutPage.cpp
     ui/pages/ListPage.cpp
     ui/pages/MidiOutputPage.cpp
+    ui/pages/MatrixRouterPage.cpp
     ui/pages/ModulatorPage.cpp
     ui/pages/MonitorPage.cpp
     ui/pages/NoteSequenceEditPage.cpp

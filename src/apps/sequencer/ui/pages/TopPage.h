@@ -30,6 +30,7 @@ private:
         Sequence        = PageKeyMap::Sequence,
         SequenceEdit    = PageKeyMap::SequenceEdit,
         Song            = PageKeyMap::Song,
+        MatrixRouter    = PageKeyMap::MatrixRouter,
         Routing         = PageKeyMap::Routing,
         MidiOutput      = PageKeyMap::MidiOutput,
         Pattern         = PageKeyMap::Pattern,

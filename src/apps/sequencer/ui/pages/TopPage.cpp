@@ -220,6 +220,9 @@ void TopPage::setMode(Mode mode) {
     case Mode::Song:
         setMainPage(pages.song);
         break;
+    case Mode::MatrixRouter:
+        setMainPage(pages.matrixRouter);
+        break;
     case Mode::Routing:
         setMainPage(pages.routing);
         break;
