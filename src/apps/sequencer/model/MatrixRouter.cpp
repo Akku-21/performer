@@ -1,5 +1,7 @@
 #include "MatrixRouter.h"
 
+#include "ProjectVersion.h"
+
 namespace {
     bool isEmpty(const MatrixRouter::Connection &connection) {
         return connection.srcType == 0 &&
@@ -69,4 +71,28 @@ int MatrixRouter::connectionCount() const {
         }
     }
     return count;
+}
+
+void MatrixRouter::write(VersionedSerializedWriter &writer) const {
+    for (const auto &connection : connections) {
+        writer.write(connection.srcType);
+        writer.write(connection.srcIndex);
+        writer.write(connection.dstCC);
+        writer.write(connection.dstCh);
+        writer.write(connection.amount);
+    }
+}
+
+void MatrixRouter::read(VersionedSerializedReader &reader) {
+    clear();
+    if (reader.dataVersion() < ProjectVersion::Version33) {
+        return;
+    }
+    for (auto &connection : connections) {
+        reader.read(connection.srcType);
+        reader.read(connection.srcIndex);
+        reader.read(connection.dstCC);
+        reader.read(connection.dstCh);
+        reader.read(connection.amount);
+    }
 }

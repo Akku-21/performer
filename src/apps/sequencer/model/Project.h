@@ -10,6 +10,7 @@
 #include "PlayState.h"
 #include "UserScale.h"
 #include "Routing.h"
+#include "MatrixRouter.h"
 #include "MidiOutput.h"
 #include "Modulator.h"
 #include "Serialize.h"
@@ -397,6 +398,9 @@ public:
     const Modulator &modulator(int index) const { return _modulators[index]; }
           Modulator &modulator(int index)       { return _modulators[index]; }
 
+    const MatrixRouter &matrixRouter() const { return _matrixRouter; }
+          MatrixRouter &matrixRouter()       { return _matrixRouter; }
+
     // selectedModulatorIndex
 
     int selectedModulatorIndex() const { return _selectedModulatorIndex; }
@@ -546,6 +550,7 @@ private:
     Routing _routing;
     MidiOutput _midiOutput;
     ModulatorArray _modulators;
+    MatrixRouter _matrixRouter;
 
     int _selectedTrackIndex = 0;
     int _selectedPatternIndex = 0;

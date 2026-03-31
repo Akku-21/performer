@@ -4,7 +4,6 @@
 #include "Settings.h"
 #include "ClipBoard.h"
 #include "Serialize.h"
-#include "MatrixRouter.h"
 
 #include "os/os.h"
 
@@ -38,8 +37,8 @@ public:
     const ClipBoard &clipBoard() const { return _clipBoard; }
           ClipBoard &clipBoard()       { return _clipBoard; }
 
-    const MatrixRouter &matrixRouter() const { return _matrixRouter; }
-          MatrixRouter &matrixRouter()       { return _matrixRouter; }
+    const MatrixRouter &matrixRouter() const { return _project.matrixRouter(); }
+          MatrixRouter &matrixRouter()       { return _project.matrixRouter(); }
 
     //----------------------------------------
     // Methods
@@ -53,5 +52,4 @@ private:
     Project _project;
     Settings _settings;
     ClipBoard _clipBoard;
-    MatrixRouter _matrixRouter;
 };

@@ -60,6 +60,7 @@ void Project::clear() {
     _playState.clear();
     _routing.clear();
     _midiOutput.clear();
+    _matrixRouter.clear();
 
     for (auto &userScale : UserScale::userScales) {
         userScale.clear();
@@ -132,6 +133,7 @@ void Project::write(VersionedSerializedWriter &writer) const {
     _playState.write(writer);
     _routing.write(writer);
     _midiOutput.write(writer);
+    _matrixRouter.write(writer);
 
     writeArray(writer, UserScale::userScales);
 
@@ -182,6 +184,7 @@ bool Project::read(VersionedSerializedReader &reader) {
     _playState.read(reader);
     _routing.read(reader);
     _midiOutput.read(reader);
+    _matrixRouter.read(reader);
 
     if (reader.dataVersion() >= ProjectVersion::Version5) {
         readArray(reader, UserScale::userScales);

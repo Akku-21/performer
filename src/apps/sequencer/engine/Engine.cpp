@@ -6,7 +6,10 @@
 #include "TuringMachineTrackEngine.h"
 
 #include "core/Debug.h"
+#include "core/math/Math.h"
 #include "core/midi/MidiMessage.h"
+
+#include "model/MatrixRouter.h"
 
 #include "os/os.h"
 
@@ -163,6 +166,38 @@ void Engine::update() {
             bool gate = _trackEngines[gateTrack]->gateOutput(0);
             _modulatorEngine.tick(tick, modulator, modulatorIndex, gate);
             _midiOutputEngine.sendModulator(modulatorIndex, _modulatorEngine.currentValue(modulatorIndex));
+        }
+
+        const auto &matrixRouter = _project.matrixRouter();
+        auto sendMatrixCc = [this] (int channel, int cc, int value) {
+            auto message = MidiMessage::makeControlChange(channel, cc, value);
+            _midi.send(message);
+            _usbMidi.send(0, message);
+        };
+        for (int connectionIndex = 0; connectionIndex < MatrixRouter::MaxConnections; ++connectionIndex) {
+            const auto &connection = matrixRouter.connections[connectionIndex];
+            if (connection.amount == 0) {
+                continue;
+            }
+
+            float normalizedValue = 0.f;
+            switch (MatrixRouter::SrcType(connection.srcType)) {
+            case MatrixRouter::SrcType::Mod:
+                normalizedValue = clamp(_modulatorEngine.currentValue(connection.srcIndex) / 255.f, 0.f, 1.f);
+                break;
+            case MatrixRouter::SrcType::CvIn: {
+                float cv = _cvInput.channel(connection.srcIndex);
+                normalizedValue = clamp((cv + 5.0f) / 10.0f, 0.f, 1.f);
+                break;
+            }
+            case MatrixRouter::SrcType::Note:
+                continue;
+            }
+
+            float scaled = normalizedValue * (connection.amount / 100.0f);
+            scaled = clamp(scaled, 0.f, 1.f);
+            int ccValue = int(scaled * 127.f);
+            sendMatrixCc(connection.dstCh, connection.dstCC, ccValue);
         }
 
         // update midi outputs, force sending CC on first tick

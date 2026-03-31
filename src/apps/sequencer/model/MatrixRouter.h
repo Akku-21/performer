@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Serialize.h"
+
 #include <cstdint>
 
 class MatrixRouter {
@@ -25,4 +27,7 @@ public:
     bool addConnection(SrcType srcType, int srcIndex, int dstCC, int dstCh, int8_t amount = 0);
     void removeConnection(int index);
     int connectionCount() const;
+
+    void write(VersionedSerializedWriter &writer) const;
+    void read(VersionedSerializedReader &reader);
 };

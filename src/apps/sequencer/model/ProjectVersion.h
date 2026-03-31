@@ -93,6 +93,8 @@ enum ProjectVersion {
     // added Project::midiIntegrationMode, Project::midiProgramOffset, Project::alwaysSync
     Version32 = 32,
 
+    Version33 = 33,
+
     // automatically derive latest version
     Last,
     Latest = Last - 1,
