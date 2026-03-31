@@ -68,11 +68,11 @@ private:
     static int generateTriangle(uint16_t phase) {
         // First half: rise from -127 to +127
         if (phase < 32768) {
-            return -127 + ((phase * 254) / 32768);
+            return -127 + (((int32_t)phase * 255) / 32768);
         }
         // Second half: fall from +127 to -127
         else {
-            return 127 - (((phase - 32768) * 254) / 32768);
+            return 127 - ((((int32_t)(phase - 32768)) * 255) / 32768);
         }
     }
 
@@ -80,14 +80,14 @@ private:
      * Generate sawtooth wave (upward)
      */
     static int generateSawUp(uint16_t phase) {
-        return ((int)phase * 254 / 65536) - 127;
+        return ((int32_t)phase * 255 / 65536) - 127;
     }
 
     /**
      * Generate sawtooth wave (downward)
      */
     static int generateSawDown(uint16_t phase) {
-        return 127 - ((int)phase * 254 / 65536);
+        return 127 - ((int32_t)phase * 255 / 65536);
     }
 
     /**
