@@ -23,6 +23,7 @@ namespace {
     constexpr int DestinationHeight = 8;
 
     constexpr int DestCount = 16;
+    constexpr int CvOutCount = 8;
 
     enum class ContextAction {
         ClearAll,
@@ -73,8 +74,9 @@ void MatrixRouterPage::draw(Canvas &canvas) {
         }
     }
 
-    const int destWidth = Width / DestCount;
-    for (int i = 0; i < DestCount; ++i) {
+    const int destCount = destinationCount();
+    const int destWidth = Width / destCount;
+    for (int i = 0; i < destCount; ++i) {
         int x = i * destWidth;
         bool selected = isDestSelected(i) || isDestMasked(i);
         canvas.setColor(selected ? Color::Bright : Color::Medium);
@@ -90,44 +92,83 @@ void MatrixRouterPage::draw(Canvas &canvas) {
     MatrixRouter::SrcType srcType = sourceType();
     int srcBase = sourceIndex();
 
-    for (int i = 0; i < MatrixRouter::MaxConnections; ++i) {
-        const auto &connection = router.connections[i];
-        if (connection.amount == 0) {
-            continue;
-        }
-        if (connection.srcType != static_cast<uint8_t>(srcType)) {
-            continue;
-        }
-        if (connection.srcIndex < srcBase || connection.srcIndex >= srcBase + srcCount) {
-            continue;
-        }
-        if (connection.dstCC < baseCc || connection.dstCC >= baseCc + DestCount) {
-            continue;
-        }
-        if (connection.dstCh != 0) {
-            continue;
-        }
+    if (_destinationTab == DestinationTab::MidiCc) {
+        for (int i = 0; i < MatrixRouter::MaxConnections; ++i) {
+            const auto &connection = router.connections[i];
+            if (connection.amount == 0) {
+                continue;
+            }
+            if (connection.srcType != static_cast<uint8_t>(srcType)) {
+                continue;
+            }
+            if (connection.srcIndex < srcBase || connection.srcIndex >= srcBase + srcCount) {
+                continue;
+            }
+            if (connection.dstCC < baseCc || connection.dstCC >= baseCc + destCount) {
+                continue;
+            }
+            if (connection.dstCh != 0) {
+                continue;
+            }
 
-        int srcIndex = connection.srcIndex - srcBase;
-        int destIndex = connection.dstCC - baseCc;
+            int srcIndex = connection.srcIndex - srcBase;
+            int destIndex = connection.dstCC - baseCc;
 
-        int srcCenter = srcIndex * srcWidth + srcWidth / 2;
-        int destCenter = destIndex * destWidth + destWidth / 2;
+            int srcCenter = srcIndex * srcWidth + srcWidth / 2;
+            int destCenter = destIndex * destWidth + destWidth / 2;
 
-        bool highlight = isSrcSelected(srcIndex) && (isDestSelected(destIndex) || isDestMasked(destIndex));
-        canvas.setColor(highlight ? Color::Bright : Color::Medium);
+            bool highlight = isSrcSelected(srcIndex) && (isDestSelected(destIndex) || isDestMasked(destIndex));
+            canvas.setColor(highlight ? Color::Bright : Color::Medium);
 
-        canvas.vline(srcCenter, SourceY + SourceHeight, ConnectionTopY - (SourceY + SourceHeight));
-        canvas.vline(destCenter, ConnectionBottomY, DestinationY - ConnectionBottomY);
+            canvas.vline(srcCenter, SourceY + SourceHeight, ConnectionTopY - (SourceY + SourceHeight));
+            canvas.vline(destCenter, ConnectionBottomY, DestinationY - ConnectionBottomY);
 
-        int x1 = srcCenter;
-        int x2 = destCenter;
-        if (x1 > x2) {
-            int tmp = x1;
-            x1 = x2;
-            x2 = tmp;
+            int x1 = srcCenter;
+            int x2 = destCenter;
+            if (x1 > x2) {
+                int tmp = x1;
+                x1 = x2;
+                x2 = tmp;
+            }
+            canvas.hline(x1, ConnectionMidY, x2 - x1);
         }
-        canvas.hline(x1, ConnectionMidY, x2 - x1);
+    } else {
+        for (int i = 0; i < MatrixRouter::MaxCvConnections; ++i) {
+            const auto &connection = router.cvConnections[i];
+            if (connection.isEmpty() || connection.amount == 0) {
+                continue;
+            }
+            if (connection.srcType != static_cast<uint8_t>(srcType)) {
+                continue;
+            }
+            if (connection.srcIndex < srcBase || connection.srcIndex >= srcBase + srcCount) {
+                continue;
+            }
+            if (connection.dstChannel >= destCount) {
+                continue;
+            }
+
+            int srcIndex = connection.srcIndex - srcBase;
+            int destIndex = connection.dstChannel;
+
+            int srcCenter = srcIndex * srcWidth + srcWidth / 2;
+            int destCenter = destIndex * destWidth + destWidth / 2;
+
+            bool highlight = isSrcSelected(srcIndex) && (isDestSelected(destIndex) || isDestMasked(destIndex));
+            canvas.setColor(highlight ? Color::Bright : Color::Medium);
+
+            canvas.vline(srcCenter, SourceY + SourceHeight, ConnectionTopY - (SourceY + SourceHeight));
+            canvas.vline(destCenter, ConnectionBottomY, DestinationY - ConnectionBottomY);
+
+            int x1 = srcCenter;
+            int x2 = destCenter;
+            if (x1 > x2) {
+                int tmp = x1;
+                x1 = x2;
+                x2 = tmp;
+            }
+            canvas.hline(x1, ConnectionMidY, x2 - x1);
+        }
     }
 
     if (_showAmount) {
@@ -147,7 +188,7 @@ void MatrixRouterPage::updateLeds(Leds &leds) {
         leds.set(MatrixMap::fromTrack(i), false, selected);
     }
 
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < destinationCount(); ++i) {
         bool selected = isDestSelected(i) || isDestMasked(i);
         leds.set(MatrixMap::fromStep(i), false, selected);
     }
@@ -172,6 +213,10 @@ void MatrixRouterPage::keyPress(KeyPressEvent &event) {
             cycleCcBank();
             event.consume();
             return;
+        case 4:
+            cycleDestinationTab();
+            event.consume();
+            return;
         default:
             break;
         }
@@ -185,7 +230,7 @@ void MatrixRouterPage::keyPress(KeyPressEvent &event) {
 
     if (key.isStep()) {
         int destIndex = key.step();
-        if (destIndex >= DestCount) {
+        if (destIndex >= destinationCount()) {
             return;
         }
         if (key.shiftModifier()) {
@@ -227,23 +272,40 @@ void MatrixRouterPage::encoder(EncoderEvent &event) {
 
     auto &router = _model.matrixRouter();
     auto updateAmountForDest = [&](int destIndex) {
-        int dstCC = baseCc + destIndex;
-        int connectionIndex = router.findConnection(sourceType(), srcIndex, dstCC, 0);
-        int8_t amount = 0;
-        if (connectionIndex >= 0) {
-            amount = router.connections[connectionIndex].amount;
-        }
-        amount = utils::clamp<int>(amount + amountDelta, -100, 100);
-        if (connectionIndex >= 0) {
-            router.connections[connectionIndex].amount = amount;
+        if (_destinationTab == DestinationTab::MidiCc) {
+            int dstCC = baseCc + destIndex;
+            int connectionIndex = router.findConnection(sourceType(), srcIndex, dstCC, 0);
+            int8_t amount = 0;
+            if (connectionIndex >= 0) {
+                amount = router.connections[connectionIndex].amount;
+            }
+            amount = utils::clamp<int>(amount + amountDelta, -100, 100);
+            if (connectionIndex >= 0) {
+                router.connections[connectionIndex].amount = amount;
+            } else {
+                router.addConnection(sourceType(), srcIndex, dstCC, 0, amount);
+            }
+            _amountDisplay = amount;
         } else {
-            router.addConnection(sourceType(), srcIndex, dstCC, 0, amount);
+            int dstChannel = destIndex;
+            int connectionIndex = router.findCvConnection(sourceType(), srcIndex, dstChannel);
+            int8_t amount = 0;
+            if (connectionIndex >= 0) {
+                amount = router.cvConnections[connectionIndex].amount;
+            }
+            amount = utils::clamp<int>(amount + amountDelta, -100, 100);
+            if (connectionIndex >= 0) {
+                router.cvConnections[connectionIndex].amount = amount;
+            } else {
+                router.addCvConnection(sourceType(), srcIndex, dstChannel, amount);
+            }
+            _amountDisplay = amount;
         }
-        _amountDisplay = amount;
     };
 
     if (_destMask) {
-        for (int i = 0; i < DestCount; ++i) {
+        int destCount = destinationCount();
+        for (int i = 0; i < destCount; ++i) {
             if (_destMask & (1u << i)) {
                 updateAmountForDest(i);
             }
@@ -260,6 +322,12 @@ void MatrixRouterPage::encoder(EncoderEvent &event) {
 void MatrixRouterPage::cycleSourceTab() {
     _sourceTab = SourceTab((int(_sourceTab) + 1) % int(SourceTab::Last));
     _selectedSource = 0;
+}
+
+void MatrixRouterPage::cycleDestinationTab() {
+    _destinationTab = DestinationTab((int(_destinationTab) + 1) % int(DestinationTab::Last));
+    _selectedDest = 0;
+    _destMask = 0;
 }
 
 void MatrixRouterPage::cycleCcBank() {
@@ -311,6 +379,18 @@ int MatrixRouterPage::sourceIndex() const {
     return 0;
 }
 
+int MatrixRouterPage::destinationCount() const {
+    switch (_destinationTab) {
+    case DestinationTab::MidiCc:
+        return DestCount;
+    case DestinationTab::CvOut:
+        return CvOutCount;
+    case DestinationTab::Last:
+        break;
+    }
+    return DestCount;
+}
+
 int MatrixRouterPage::destCc(int destIndex) const {
     return _ccBank * DestCount + destIndex;
 }
@@ -320,7 +400,7 @@ bool MatrixRouterPage::sourceSelected() const {
 }
 
 bool MatrixRouterPage::destinationSelected() const {
-    return _selectedDest >= 0 && _selectedDest < DestCount;
+    return _selectedDest >= 0 && _selectedDest < destinationCount();
 }
 
 void MatrixRouterPage::selectSource(int index) {
@@ -328,11 +408,11 @@ void MatrixRouterPage::selectSource(int index) {
 }
 
 void MatrixRouterPage::selectDestination(int index) {
-    _selectedDest = utils::clamp(index, 0, DestCount - 1);
+    _selectedDest = utils::clamp(index, 0, destinationCount() - 1);
 }
 
 void MatrixRouterPage::toggleDestinationMask(int index) {
-    if (index < 0 || index >= DestCount) {
+    if (index < 0 || index >= destinationCount()) {
         return;
     }
     _destMask ^= (1u << index);
@@ -348,21 +428,36 @@ void MatrixRouterPage::commitConnections() {
     auto &router = _model.matrixRouter();
 
     auto commitDest = [&](int destIndex) {
-        int dstCC = baseCc + destIndex;
-        int existingIndex = router.findConnection(sourceType(), srcIndex, dstCC, 0);
-        if (existingIndex >= 0) {
-            int8_t amount = router.connections[existingIndex].amount;
-            if (amount == 0) {
-                amount = 50;
+        if (_destinationTab == DestinationTab::MidiCc) {
+            int dstCC = baseCc + destIndex;
+            int existingIndex = router.findConnection(sourceType(), srcIndex, dstCC, 0);
+            if (existingIndex >= 0) {
+                int8_t amount = router.connections[existingIndex].amount;
+                if (amount == 0) {
+                    amount = 50;
+                }
+                router.connections[existingIndex].amount = amount;
+            } else {
+                router.addConnection(sourceType(), srcIndex, dstCC, 0, 50);
             }
-            router.connections[existingIndex].amount = amount;
         } else {
-            router.addConnection(sourceType(), srcIndex, dstCC, 0, 50);
+            int dstChannel = destIndex;
+            int existingIndex = router.findCvConnection(sourceType(), srcIndex, dstChannel);
+            if (existingIndex >= 0) {
+                int8_t amount = router.cvConnections[existingIndex].amount;
+                if (amount == 0) {
+                    amount = 50;
+                }
+                router.cvConnections[existingIndex].amount = amount;
+            } else {
+                router.addCvConnection(sourceType(), srcIndex, dstChannel, 50);
+            }
         }
     };
 
     if (_destMask) {
-        for (int i = 0; i < DestCount; ++i) {
+        int destCount = destinationCount();
+        for (int i = 0; i < destCount; ++i) {
             if (_destMask & (1u << i)) {
                 commitDest(i);
             }
@@ -378,11 +473,19 @@ void MatrixRouterPage::removeConnection(int destIndex) {
     }
 
     int srcIndex = sourceIndex() + _selectedSource;
-    int dstCC = destCc(destIndex);
     auto &router = _model.matrixRouter();
-    int connectionIndex = router.findConnection(sourceType(), srcIndex, dstCC, 0);
-    if (connectionIndex >= 0) {
-        router.removeConnection(connectionIndex);
+    if (_destinationTab == DestinationTab::MidiCc) {
+        int dstCC = destCc(destIndex);
+        int connectionIndex = router.findConnection(sourceType(), srcIndex, dstCC, 0);
+        if (connectionIndex >= 0) {
+            router.removeConnection(connectionIndex);
+        }
+    } else {
+        int dstChannel = destIndex;
+        int connectionIndex = router.findCvConnection(sourceType(), srcIndex, dstChannel);
+        if (connectionIndex >= 0) {
+            router.removeCvConnection(connectionIndex);
+        }
     }
 }
 
@@ -428,13 +531,18 @@ void MatrixRouterPage::randomizeConnections() {
             break;
         }
 
-        int dstCC = int(random.nextRange(128));
-        int dstCh = int(random.nextRange(1));
         int8_t amount = int8_t(random.nextRange(201)) - 100;
         if (amount == 0) {
             amount = 50;
         }
-        router.addConnection(type, srcIndex, dstCC, dstCh, amount);
+        if (random.nextRange(2) == 0) {
+            int dstCC = int(random.nextRange(128));
+            int dstCh = int(random.nextRange(1));
+            router.addConnection(type, srcIndex, dstCC, dstCh, amount);
+        } else {
+            int dstChannel = int(random.nextRange(CvOutCount));
+            router.addCvConnection(type, srcIndex, dstChannel, amount);
+        }
     }
 
     showMessage("RANDOMIZED");

@@ -20,6 +20,10 @@ void MatrixRouter::clear() {
     for (auto &connection : connections) {
         connection = {};
     }
+    for (auto &connection : cvConnections) {
+        connection = {};
+        connection.srcType = 0xFF;
+    }
 }
 
 int MatrixRouter::findConnection(SrcType srcType, int srcIndex, int dstCC, int dstCh) const {
@@ -73,6 +77,59 @@ int MatrixRouter::connectionCount() const {
     return count;
 }
 
+int MatrixRouter::findCvConnection(SrcType srcType, int srcIndex, int dstChannel) const {
+    for (int i = 0; i < MaxCvConnections; ++i) {
+        const auto &connection = cvConnections[i];
+        if (connection.isEmpty()) {
+            continue;
+        }
+        if (connection.srcType == static_cast<uint8_t>(srcType) &&
+            connection.srcIndex == srcIndex &&
+            connection.dstChannel == dstChannel) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+bool MatrixRouter::addCvConnection(SrcType srcType, int srcIndex, int dstChannel, int8_t amount) {
+    int existingIndex = findCvConnection(srcType, srcIndex, dstChannel);
+    if (existingIndex >= 0) {
+        cvConnections[existingIndex].amount = amount;
+        return true;
+    }
+
+    for (int i = 0; i < MaxCvConnections; ++i) {
+        if (cvConnections[i].isEmpty()) {
+            cvConnections[i].srcType = static_cast<uint8_t>(srcType);
+            cvConnections[i].srcIndex = srcIndex;
+            cvConnections[i].dstChannel = dstChannel;
+            cvConnections[i].amount = amount;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void MatrixRouter::removeCvConnection(int index) {
+    if (index < 0 || index >= MaxCvConnections) {
+        return;
+    }
+    cvConnections[index] = {};
+    cvConnections[index].srcType = 0xFF;
+}
+
+int MatrixRouter::cvConnectionCount() const {
+    int count = 0;
+    for (const auto &connection : cvConnections) {
+        if (!connection.isEmpty()) {
+            ++count;
+        }
+    }
+    return count;
+}
+
 void MatrixRouter::write(VersionedSerializedWriter &writer) const {
     for (const auto &connection : connections) {
         writer.write(connection.srcType);
@@ -80,6 +137,15 @@ void MatrixRouter::write(VersionedSerializedWriter &writer) const {
         writer.write(connection.dstCC);
         writer.write(connection.dstCh);
         writer.write(connection.amount);
+    }
+
+    if (writer.writerVersion() >= ProjectVersion::Version34) {
+        for (const auto &connection : cvConnections) {
+            writer.write(connection.srcType);
+            writer.write(connection.srcIndex);
+            writer.write(connection.dstChannel);
+            writer.write(connection.amount);
+        }
     }
 }
 
@@ -94,5 +160,14 @@ void MatrixRouter::read(VersionedSerializedReader &reader) {
         reader.read(connection.dstCC);
         reader.read(connection.dstCh);
         reader.read(connection.amount);
+    }
+
+    if (reader.dataVersion() >= ProjectVersion::Version34) {
+        for (auto &connection : cvConnections) {
+            reader.read(connection.srcType);
+            reader.read(connection.srcIndex);
+            reader.read(connection.dstChannel);
+            reader.read(connection.amount);
+        }
     }
 }

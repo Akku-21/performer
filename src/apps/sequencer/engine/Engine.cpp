@@ -190,8 +190,19 @@ void Engine::update() {
                 normalizedValue = clamp((cv + 5.0f) / 10.0f, 0.f, 1.f);
                 break;
             }
-            case MatrixRouter::SrcType::Note:
-                continue;
+            case MatrixRouter::SrcType::Note: {
+                if (connection.srcIndex >= CONFIG_TRACK_COUNT) {
+                    continue;
+                }
+                const auto &trackEngine = _trackEngines[connection.srcIndex];
+                if (!trackEngine) {
+                    continue;
+                }
+                float volts = trackEngine->cvOutput(0);
+                int midiNote = clamp(static_cast<int>(volts * 12.f) + 60, 0, 127);
+                normalizedValue = midiNote / 127.f;
+                break;
+            }
             }
 
             float scaled = normalizedValue * (connection.amount / 100.0f);
@@ -213,6 +224,48 @@ void Engine::update() {
     _midiOutputEngine.update();
 
     updateTrackOutputs();
+    {
+        const auto &matrixRouter = _project.matrixRouter();
+        for (int connectionIndex = 0; connectionIndex < MatrixRouter::MaxCvConnections; ++connectionIndex) {
+            const auto &connection = matrixRouter.cvConnections[connectionIndex];
+            if (connection.isEmpty() || connection.amount == 0) {
+                continue;
+            }
+            if (connection.dstChannel >= CONFIG_CV_OUTPUT_CHANNELS) {
+                continue;
+            }
+
+            float normalizedValue = 0.f;
+            switch (MatrixRouter::SrcType(connection.srcType)) {
+            case MatrixRouter::SrcType::Mod:
+                normalizedValue = clamp(_modulatorEngine.currentValue(connection.srcIndex) / 255.f, 0.f, 1.f);
+                break;
+            case MatrixRouter::SrcType::CvIn: {
+                float cv = _cvInput.channel(connection.srcIndex);
+                normalizedValue = clamp((cv + 5.0f) / 10.0f, 0.f, 1.f);
+                break;
+            }
+            case MatrixRouter::SrcType::Note: {
+                if (connection.srcIndex >= CONFIG_TRACK_COUNT) {
+                    continue;
+                }
+                const auto &trackEngine = _trackEngines[connection.srcIndex];
+                if (!trackEngine) {
+                    continue;
+                }
+                float volts = trackEngine->cvOutput(0);
+                int midiNote = clamp(static_cast<int>(volts * 12.f) + 60, 0, 127);
+                normalizedValue = midiNote / 127.f;
+                break;
+            }
+            }
+
+            float scaled = normalizedValue * (connection.amount / 100.0f);
+            float cvOffset = clamp(scaled, -1.f, 1.f) * 5.0f;
+            float current = _cvOutput.channel(connection.dstChannel);
+            _cvOutput.setChannel(connection.dstChannel, current + cvOffset);
+        }
+    }
     updateOverrides();
 
     // update cv/gate outputs

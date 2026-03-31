@@ -95,6 +95,8 @@ enum ProjectVersion {
 
     Version33 = 33,
 
+    Version34 = 34,
+
     // automatically derive latest version
     Last,
     Latest = Last - 1,

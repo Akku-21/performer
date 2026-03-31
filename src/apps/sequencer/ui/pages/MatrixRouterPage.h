@@ -27,12 +27,20 @@ private:
         Last,
     };
 
+    enum class DestinationTab : uint8_t {
+        MidiCc,
+        CvOut,
+        Last,
+    };
+
     void cycleSourceTab();
+    void cycleDestinationTab();
     void cycleCcBank();
 
     int sourceCount() const;
     MatrixRouter::SrcType sourceType() const;
     int sourceIndex() const;
+    int destinationCount() const;
     int destCc(int destIndex) const;
 
     bool sourceSelected() const;
@@ -54,6 +62,7 @@ private:
     bool isDestMasked(int index) const;
 
     SourceTab _sourceTab = SourceTab::Mod;
+    DestinationTab _destinationTab = DestinationTab::MidiCc;
     int _selectedSource = 0;
     int _selectedDest = 0;
     uint16_t _destMask = 0;
